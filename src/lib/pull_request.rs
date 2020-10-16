@@ -7,7 +7,7 @@ pub async fn collect_pull_request(owner: &str, repository: &str) -> Result<(), E
 
     let response = Client::new()
     .get(&endpoint)
-    .bearer_auth("2fbae4d52cd05740fd6e777a7bb08a842c34ae14")
+    .bearer_auth("")
     .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36")
     .send().await?;
 
@@ -20,7 +20,6 @@ pub async fn collect_pull_request(owner: &str, repository: &str) -> Result<(), E
     
     Ok(())
 }
-    
     
 fn parse_json(json_str: &str) {
     let parsed: Value = from_str(&json_str).unwrap();    
