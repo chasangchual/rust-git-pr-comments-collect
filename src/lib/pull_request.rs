@@ -7,14 +7,14 @@ pub async fn collect_pull_request(owner: &str, repository: &str) -> Result<(), E
 
     let response = Client::new()
     .get(&endpoint)
-    .bearer_auth("61724104093f978d3f82d5d4221308f798739c19")
+    .bearer_auth("2fbae4d52cd05740fd6e777a7bb08a842c34ae14")
     .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36")
     .send().await?;
 
     let out = response.text().await;
 
     match out {
-        Ok(body) => parse_json(body),
+        Ok(body) => parse_json(&body),
         Err(e) => println!("{:?}", e)
     };
     
@@ -22,7 +22,7 @@ pub async fn collect_pull_request(owner: &str, repository: &str) -> Result<(), E
 }
     
     
-pub fn parse_json(json_str: String) {
+fn parse_json(json_str: &str) {
     let parsed: Value = from_str(&json_str).unwrap();    
     println!("is_array: {:?}", parsed.is_array());
     println!("is_object: {:?}", parsed.is_object());
@@ -30,7 +30,7 @@ pub fn parse_json(json_str: String) {
     if parsed.is_array() {
         for obj in parsed.as_array().unwrap() {
             // println!("{}",to_string_pretty(obj).unwrap());
-            parse_body(obj);
+            parse_pr(obj);
         }
     } else if parsed.is_object() {
         for node in parsed.as_object().unwrap() {
@@ -39,24 +39,52 @@ pub fn parse_json(json_str: String) {
     }
 }
 
-pub fn parse_body(json_root: &Value) {
+fn parse_pr(json_root: &Value) {
     if json_root.is_object() {
         let json_nodes = json_root.as_object().unwrap();
 
         match json_nodes.get("title") {
-            Some(v) => print_str_json(v),
+            Some(v) => print_str_json("title", v),
             None => ()
         }
 
         match json_nodes.get("body") {
-            Some(v) => print_str_json(v),
+            Some(v) => print_str_json("pr body", v),
+            None => ()
+        }
+
+        match json_nodes.get("_links") {
+            Some(v) =>  {
+                match get_chile_obj_json(v, "review_comments") {
+                    Some(v) =>  {
+                        let href = v.as_object().unwrap().get("href").unwrap();
+                        print_str_json("review_comments", href);
+                    },
+                    None => ()
+                }
+            },
             None => ()
         }
     }
 }
 
-pub fn print_str_json(json_node: &Value) {
+fn print_str_json(name: &str, json_node: &Value) {
     if json_node.is_string() {
-        println!("{}", json_node.as_str().unwrap());
+        println!("{name} {value}", name = name, value = json_node.as_str().unwrap());
+    } else {
+        println!("{name} is not a string node", name = name);
+    }
+}
+
+fn get_chile_obj_json<'a>(json_node: &'a Value, child_name: &'a str) -> Option<&'a Value>{
+    if json_node.is_object() {
+        match json_node.as_object().unwrap().get(child_name) {
+            Some(v) =>  {
+                Some(v)
+            },
+            None => None
+        }
+    } else {
+        None
     }
 }
