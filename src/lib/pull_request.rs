@@ -4,7 +4,6 @@ use serde_json::from_str;
 use serde_json::Value;
 
 pub async fn collect_pull_request(owner: &str, repository: &str) -> Result<(), Error> {
-//    let endpoint = format!("https://api.github.com/repos/apache/kafka/pulls")
     let endpoint = format!("https://api.github.com/repos/{owner}/{repository}/pulls", owner=owner, repository=repository);
 
     let response = Client::new()
@@ -25,8 +24,6 @@ pub async fn collect_pull_request(owner: &str, repository: &str) -> Result<(), E
     
     
 pub fn parse_json(json_str: String) {
-    //    println!("{}", json_str);
-    
     let parsed: Value = from_str(&json_str).unwrap();    
     println!("is_array: {:?}", parsed.is_array());
     println!("is_object: {:?}", parsed.is_object());
