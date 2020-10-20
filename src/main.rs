@@ -7,25 +7,27 @@ use postgres::{Client, NoTls, Error};
 
 #[tokio::main]
 async fn main() {
-
-    let owner = "apache";
-    let repository = "kafka";
-    match run_collect() {
-        Ok(r) => r,
-        Err(e) => println!("{:?}", e),
-    }
-
-    collect_pull_request(owner, repository).await.unwrap();
+    run_collect().await;
 }
 
+async fn run_collect() {
 
-fn run_collect() -> Result<(), Error> {
-    let mut client = Client::connect("postgresql://postgres:postgres@localhost/repository",  NoTls)?;
+    let client = Client::connect("postgresql://postgres:Abc12345!@localhost:5678/git-pr-comments-collect",  NoTls);
 
-    for row in client.query("SELECT pid, owner, courepositoryntry FROM author", &[])? {
-        let repository = Repository::new(row.get(0), row.get(1), row.get(2));
-        println!("Author {} is from {}", repository.owner(), repository.repository());
+    match client {
+        Ok(mut client) =>  {
+                    let result = client.query("SELECT pid, owner, repository FROM repository", &[]);
+                    match result {
+                        Ok(rows) => {
+                            for row in rows {
+                                let repository = Repository::new(row.get(0), row.get(1), row.get(2));
+                                println!("owner: {}, repository: {}", repository.owner(), repository.repository());
+                                collect_pull_request(repository.owner(), repository.repository()).await.unwrap();
+                            }
+                        },
+                        Err(e) => println!("{:?}", e),
+                    }
+                },
+        Err(e) => println!("{:?}", e),
     }
-
-    Ok(())
 }
