@@ -22,7 +22,7 @@ async fn run_collect() {
                             for row in rows {
                                 let repository = Repository::new(row.get(0), row.get(1), row.get(2));
                                 println!("owner: {}, repository: {}", repository.owner(), repository.repository());
-                                collect_pull_request(repository.owner(), repository.repository(), client).await.unwrap();
+                                collect_pull_request(repository.owner(), repository.repository()).await.unwrap();
                             }
                         },
                         Err(e) => println!("{:?}", e),
