@@ -2,9 +2,9 @@ use reqwest::Error;
 use reqwest::Client;
 use serde_json::{from_str, Value, to_string_pretty};
 
-static TOKEN: &str = "";
+static TOKEN: &str = "ab0d37c18f84dd702e7174dee5831d7317587c57";
 
-pub async fn collect_pull_request(owner: &str, repository: &str) -> Result<(), Error> {
+pub async fn collect_pull_request(owner: &str, repository: &str, client: Client) -> Result<(), Error> {
     let endpoint = format!("https://api.github.com/repos/{owner}/{repository}/pulls", owner=owner, repository=repository);
 
     let response = Client::new()
@@ -16,14 +16,14 @@ pub async fn collect_pull_request(owner: &str, repository: &str) -> Result<(), E
     let out = response.text().await;
 
     match out {
-        Ok(body) => parse_json(owner, repository, &body).await,
+        Ok(body) => parse_json(owner, repository, &body, client).await,
         Err(e) => println!("{:?}", e)
     };
     
     Ok(())
 }
     
-async fn parse_json(_owner: &str, _repository: &str, json_str: &str) {
+async fn parse_json(_owner: &str, _repository: &str, json_str: &str, client: Client) {
     let parsed: Value = from_str(&json_str).unwrap();    
     println!("is_array: {:?}", parsed.is_array());
     println!("is_object: {:?}", parsed.is_object());
@@ -31,7 +31,7 @@ async fn parse_json(_owner: &str, _repository: &str, json_str: &str) {
     if parsed.is_array() {
         for obj in parsed.as_array().unwrap() {
             // println!("{}",to_string_pretty(obj).unwrap());
-            parse_pr(_owner, _repository, obj).await;
+            parse_pr(_owner, _repository, obj, client).await;
         }
     } else if parsed.is_object() {
         for node in parsed.as_object().unwrap() {
@@ -40,7 +40,7 @@ async fn parse_json(_owner: &str, _repository: &str, json_str: &str) {
     }
 }
 
-async fn parse_pr(_owner: &str, _repository: &str, json_root: &Value) {
+async fn parse_pr(_owner: &str, _repository: &str, json_root: &Value, client: Client) {
 println!("json_root is_array: {:?}", json_root.is_array());
 println!("json_root is_object: {:?}", json_root.is_object());
 
