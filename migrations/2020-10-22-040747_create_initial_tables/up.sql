@@ -1,4 +1,4 @@
-create table if not exists repository (
+create table if not exists git_repository (
     pid serial not null constraint repository_pkey primary key,
     owner varchar(255) not null,
     repository varchar(255) not null,
@@ -8,7 +8,7 @@ create table if not exists repository (
 
 create table if not exists pull_request (
     pid serial not null constraint pull_request_pkey primary key,
-    repository_id integer not null references repository(pid),
+    repository_id integer not null references git_repository(pid),
     number integer not null unique,
     title varchar(255) not null unique,
     body text not null unique,

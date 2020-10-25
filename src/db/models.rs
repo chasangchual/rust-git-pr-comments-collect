@@ -1,12 +1,8 @@
-use super::lib::schema::repository;
-
 use chrono::{DateTime, Utc};
 use diesel::*;
-use diesel::prelude::*;
 
 #[derive(Queryable)]
-#[table_name="repository"]
-pub struct Repository {
+pub struct GitRepository {
     pid: i32,
     owner: String,
     repository: String,

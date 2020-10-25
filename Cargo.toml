@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Sangchual Cha <sangchual.cha@gmail.com>"]
 edition = "2018"
 
+[lib]
+name = "git_pr_collect"
+path = "src/lib.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -14,5 +18,5 @@ serde_json = "1.0.59"
 futures = "0.3.6"
 postgres = "0.18.0"
 chrono = "0.4.19"
-diesel = "1.4.5"
+diesel = { version = "1.4.5", features = ["postgres"] }
 dotenv = "0.15.0"

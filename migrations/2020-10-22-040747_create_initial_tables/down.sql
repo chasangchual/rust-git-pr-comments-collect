@@ -2,3 +2,4 @@
 drop table if exists comments;
 drop table if exists pull_request;
 drop table if exists repository;
+drop table if exists git_repository
