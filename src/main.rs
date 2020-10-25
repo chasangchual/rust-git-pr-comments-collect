@@ -1,8 +1,12 @@
 
+extern crate ;
 mod lib;
 
-use lib::entities::{Repository};
+use self::lib::entities::{Repository};
 use lib::pull_request::collect_pull_request;
+use self::lib::db::*;
+
+
 use postgres::{Client, NoTls, Error};
 
 #[tokio::main]
@@ -11,8 +15,8 @@ async fn main() {
 }
 
 async fn run_collect() {
-
     let client = Client::connect("postgresql://postgres:Abc12345!@localhost:5678/git-pr-comments-collect",  NoTls);
+    let connection = establish_connection();
 
     match client {
         Ok(mut client) =>  {

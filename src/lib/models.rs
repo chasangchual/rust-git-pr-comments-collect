@@ -1,9 +1,13 @@
-use chrono::{DateTime, TimeZone, Utc};
-use diesel::Queryable;
+use super::lib::schema::repository;
+
+use chrono::{DateTime, Utc};
+use diesel::*;
+use diesel::prelude::*;
 
 #[derive(Queryable)]
+#[table_name="repository"]
 pub struct Repository {
-    _pid: i32,
+    pid: i32,
     owner: String,
     repository: String,
     created_at: Option<DateTime<Utc>>,
@@ -12,7 +16,7 @@ pub struct Repository {
 
 #[derive(Queryable)]
 pub struct PullRequest {
-    _pid: i32,
+    pid: i32,
     repository_pid: i32,
     number: i32,
     endpoint: String,
@@ -24,7 +28,7 @@ pub struct PullRequest {
 
 #[derive(Queryable)]
 pub struct Comments {
-    _pid: i32,
+    pid: i32,
     pr_pid: i32,
     number: i32,
     endpoint: String,
