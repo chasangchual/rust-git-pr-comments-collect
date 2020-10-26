@@ -8,7 +8,6 @@ use lib::db::*;
 extern crate diesel;
 extern crate git_pr_collect;
 
-use git_pr_collect::*;
 use git_pr_collect::db::models::*;
 use diesel::prelude::*;
 use git_pr_collect::db::connection::establish_connection;
