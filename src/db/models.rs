@@ -1,37 +1,36 @@
-use chrono::{DateTime, Utc};
-use diesel::*;
+use diesel::pg::data_types::PgTimestamp;
 
 #[derive(Queryable)]
 pub struct GitRepository {
-    pid: i32,
-    owner: String,
-    repository: String,
-    created_at: Option<DateTime<Utc>>,
-    updated_at: Option<DateTime<Utc>>,
+    pub pid: i32,
+    pub owner: String,
+    pub repository: String,
+    pub created_at: PgTimestamp,
+    pub updated_at: PgTimestamp,
 }
 
 #[derive(Queryable)]
 pub struct PullRequest {
-    pid: i32,
-    repository_pid: i32,
-    number: i32,
-    endpoint: String,
-    title: String,
-    body: String,
-    created_at: Option<DateTime<Utc>>,
-    updated_at: Option<DateTime<Utc>>,
+    pub pid: i32,
+    pub repository_pid: i32,
+    pub number: i32,
+    pub endpoint: String,
+    pub title: String,
+    pub body: String,
+    pub created_at: PgTimestamp,
+    pub updated_at: PgTimestamp,
 }
 
 #[derive(Queryable)]
 pub struct Comments {
-    pid: i32,
-    pr_pid: i32,
-    number: i32,
-    endpoint: String,
-    body: String,
-    diff_hunk: String,
-    path: String,
-    html_url: String,
-    created_at: Option<DateTime<Utc>>,
-    updated_at: Option<DateTime<Utc>>,
+    pub pid: i32,
+    pub pr_pid: i32,
+    pub number: i32,
+    pub endpoint: String,
+    pub body: String,
+    pub diff_hunk: String,
+    pub path: String,
+    pub html_url: String,
+    pub created_at: PgTimestamp,
+    pub updated_at: PgTimestamp,
 }

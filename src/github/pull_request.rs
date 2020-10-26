@@ -1,15 +1,16 @@
 use reqwest::Error;
 use reqwest::Client;
 use serde_json::{from_str, Value, to_string_pretty};
-
-static TOKEN: &str = "ab0d37c18f84dd702e7174dee5831d7317587c57";
+use std::env;
 
 pub async fn collect_pull_request(owner: &str, repository: &str) -> Result<(), Error> {
+    let token: String = env::var("GITHUB_API_TOKEN").expect("GITHUB_API_TOKEN must set");
+
     let endpoint = format!("https://api.github.com/repos/{owner}/{repository}/pulls", owner=owner, repository=repository);
 
     let response = Client::new()
     .get(&endpoint)
-    .bearer_auth(TOKEN)
+    .bearer_auth(&(token.as_str()))
     .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36")
     .send().await?;
 
@@ -100,9 +101,11 @@ fn get_chile_obj_json<'a>(json_node: &'a Value, child_name: &'a str) -> Option<&
 
 // https://api.github.com/repos/apache/kafka/pulls/9418/comments
 pub async fn collect_commits(_owner: &str, _repository: &str, endpoint: &str) -> Result<(), Error>   {
+    let token: String = env::var("GITHUB_API_TOKEN").expect("GITHUB_API_TOKEN must set");
+
     let response = Client::new()
     .get(endpoint)
-    .bearer_auth(TOKEN)
+    .bearer_auth(token.as_str())
     .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36")
     .send().await?;
 
