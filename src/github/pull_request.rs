@@ -2,8 +2,10 @@ use reqwest::Error;
 use reqwest::Client;
 use serde_json::{from_str, Value, to_string_pretty};
 use std::env;
+use diesel::*;
+use super::super::db::models::{PullRequest, NewPullRequest};
 
-pub async fn collect_pull_request(owner: &str, repository: &str) -> Result<(), Error> {
+pub async fn collect_pull_request(conn: &PgConnection, repository_id: i32, owner: &str, repository: &str) -> Result<(), Error> {
     let token: String = env::var("GITHUB_API_TOKEN").expect("GITHUB_API_TOKEN must set");
 
     let endpoint = format!("https://api.github.com/repos/{owner}/{repository}/pulls", owner=owner, repository=repository);
@@ -17,14 +19,14 @@ pub async fn collect_pull_request(owner: &str, repository: &str) -> Result<(), E
     let out = response.text().await;
 
     match out {
-        Ok(body) => parse_json(owner, repository, &body).await,
+        Ok(body) => parse_json(conn, repository_id, owner, repository, &body).await,
         Err(e) => println!("{:?}", e)
     };
     
     Ok(())
 }
     
-async fn parse_json(_owner: &str, _repository: &str, json_str: &str) {
+async fn parse_json(conn: &PgConnection, repository_id: i32, _owner: &str, _repository: &str, json_str: &str) {
     let parsed: Value = from_str(&json_str).unwrap();    
     println!("is_array: {:?}", parsed.is_array());
     println!("is_object: {:?}", parsed.is_object());
@@ -32,7 +34,7 @@ async fn parse_json(_owner: &str, _repository: &str, json_str: &str) {
     if parsed.is_array() {
         for obj in parsed.as_array().unwrap() {
             // println!("{}",to_string_pretty(obj).unwrap());
-            parse_pr(_owner, _repository, obj).await;
+            parse_pr(conn, repository_id, _owner, _repository, obj).await;
         }
     } else if parsed.is_object() {
         for node in parsed.as_object().unwrap() {
@@ -41,20 +43,46 @@ async fn parse_json(_owner: &str, _repository: &str, json_str: &str) {
     }
 }
 
-async fn parse_pr(_owner: &str, _repository: &str, json_root: &Value) {
+async fn parse_pr(conn: &PgConnection, repository_id: i32, _owner: &str, _repository: &str, json_root: &Value) {
 println!("json_root is_array: {:?}", json_root.is_array());
 println!("json_root is_object: {:?}", json_root.is_object());
 
     if json_root.is_object() {
         let json_nodes = json_root.as_object().unwrap();
+        let mut pull_request_number: i64 = -1;
+        let mut title: String = String::from("") ;
+        let mut body: String = String::from("") ;
+        let mut url: String = String::from("") ;
+
+        match json_nodes.get("number") {
+            Some(v) => {
+                print_str_json("number", v);
+                pull_request_number = v.as_i64().unwrap();
+            },
+            None => ()
+        }
+
+        match json_nodes.get("url") {
+            Some(v) =>  {
+                print_str_json("url", v);
+                url = String::from(v.as_str().unwrap());
+            },
+            None => ()
+        }
 
         match json_nodes.get("title") {
-            Some(v) => print_str_json("title", v),
+            Some(v) =>  {
+                print_str_json("title", v);
+                title = String::from(v.as_str().unwrap());
+            },
             None => ()
         }
 
         match json_nodes.get("body") {
-            Some(v) => print_str_json("pr body", v),
+            Some(v) =>  {
+                print_str_json("body", v);
+                //body = String::from(v.as_str().unwrap());
+            },
             None => ()
         }
 
@@ -74,12 +102,35 @@ println!("json_root is_object: {:?}", json_root.is_object());
             },
             None => ()
         }
+
+        println!("pull_request_number: {}", pull_request_number);
+        println!("repository_id: {}", repository_id);
+
+        create_pull_request(conn, &repository_id, &(pull_request_number as i32), title.as_str(), url.as_str(), body.as_str());
     }
+}
+pub fn create_pull_request<'a>(conn: &PgConnection, repository_id: &'a i32, pr_id: &'a i32, title: &'a str, url: &'a str, body: &'a str) -> PullRequest {
+    use super::super::db::schema::pull_request;
+    let new_pull_request = NewPullRequest {
+        repository_id: repository_id,
+        number: pr_id,
+        title: title,
+        endpoint: url,
+        body: body,
+    };
+
+    diesel::insert_into(pull_request::table)
+        .values(&new_pull_request)
+        .get_result(conn)
+        .expect("Error saving new pull request")
+    
 }
 
 fn print_str_json(name: &str, json_node: &Value) {
     if json_node.is_string() {
         println!("{name}: {value}", name = name, value = json_node.as_str().unwrap());
+    } else if  json_node.is_number() {
+        println!("{name}: {value}", name = name, value = json_node.as_i64().unwrap());
     } else {
         println!("{name} is not a string node", name = name);
     }

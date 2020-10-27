@@ -29,6 +29,6 @@ async fn run_collect() {
     
     for result in results {
         println!("owner: {}, repository: {}", result.owner, result.repository);
-        collect_pull_request(&result.owner, &result.repository).await.unwrap()
+        collect_pull_request(&connection, result.pid, &result.owner, &result.repository).await.unwrap()
     }
 }

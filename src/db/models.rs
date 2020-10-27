@@ -1,4 +1,5 @@
 use diesel::pg::data_types::PgTimestamp;
+use super::schema::pull_request;
 
 #[derive(Queryable)]
 pub struct GitRepository {
@@ -19,6 +20,16 @@ pub struct PullRequest {
     pub body: String,
     pub created_at: PgTimestamp,
     pub updated_at: PgTimestamp,
+}
+
+#[derive(Insertable)]
+#[table_name="pull_request"]
+pub struct NewPullRequest<'a> {
+    pub repository_id: &'a i32,
+    pub number: &'a i32,
+    pub endpoint: &'a str,
+    pub title: &'a str,
+    pub body: &'a str,
 }
 
 #[derive(Queryable)]
