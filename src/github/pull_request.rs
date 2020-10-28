@@ -2,6 +2,7 @@
 use reqwest::header::LINK;
 use reqwest::Client;
 use reqwest::Error;
+use reqwest::Response;
 use parse_link_header::parse;
 use serde_json::{from_str, Value, to_string_pretty};
 use std::env;
@@ -20,27 +21,47 @@ pub async fn collect_pull_request(conn: &PgConnection, repository_id: i32, owner
     .send().await?;
 
     if response.status().is_success() {
-        let headers = response.headers();
-        //let out = response.text().await;    
-        let link = parse(headers.get(LINK).unwrap().to_str().unwrap()).unwrap();
-        let next_link = link.get(& Some(String::from("next")));
-
-        let response = Client::new().get(&endpoint);
-        let out = response.text().await;
+        let mut next_link = get_next_link(&response);
+        let out = response.text().await;    
 
         match out {
             Ok(body) => parse_json(conn, repository_id, owner, repository, &body).await,
             Err(e) => println!("{:?}", e)
         };
 
-        match next_link {
-            Some(next_link) => println!("{:?}", next_link.uri),
-            None => {}
-        }
+        while next_link.is_some() {
+            let response = Client::new()
+            .get(&next_link.unwrap())
+            .bearer_auth(&(token.as_str()))
+            .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36")
+            .send().await?;
 
+            if response.status().is_success() {
+                next_link = get_next_link(&response);
+                let out = response.text().await;    
+                match out {
+                    Ok(body) => parse_json(conn, repository_id, owner, repository, &body).await,
+                    Err(e) => println!("{:?}", e)
+                };
+            } else {
+                next_link = None;
+            }
+        }
     }
     
     Ok(())
+}
+
+fn get_next_link(response: &Response) -> Option<String> {
+    let headers = response.headers();
+
+    let link = parse(headers.get(LINK).unwrap().to_str().unwrap()).unwrap();
+    let next_link = link.get(& Some(String::from("next")));
+
+    match next_link {
+        Some(v) => Some(v.raw_uri.clone()),
+        None => None
+    }
 }
     
 async fn parse_json(conn: &PgConnection, repository_id: i32, _owner: &str, _repository: &str, json_str: &str) {
