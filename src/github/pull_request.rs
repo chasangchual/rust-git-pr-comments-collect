@@ -1,5 +1,8 @@
-use reqwest::Error;
+
+use reqwest::header::LINK;
 use reqwest::Client;
+use reqwest::Error;
+use parse_link_header::parse;
 use serde_json::{from_str, Value, to_string_pretty};
 use std::env;
 use diesel::*;
@@ -8,7 +11,7 @@ use super::super::db::models::{PullRequest, NewPullRequest};
 pub async fn collect_pull_request(conn: &PgConnection, repository_id: i32, owner: &str, repository: &str) -> Result<(), Error> {
     let token: String = env::var("GITHUB_API_TOKEN").expect("GITHUB_API_TOKEN must set");
 
-    let endpoint = format!("https://api.github.com/repos/{owner}/{repository}/pulls", owner=owner, repository=repository);
+    let endpoint = format!("https://api.github.com/repos/{owner}/{repository}/pulls?page=1&per_page=100", owner=owner, repository=repository);
 
     let response = Client::new()
     .get(&endpoint)
@@ -16,12 +19,26 @@ pub async fn collect_pull_request(conn: &PgConnection, repository_id: i32, owner
     .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36")
     .send().await?;
 
-    let out = response.text().await;
+    if response.status().is_success() {
+        let headers = response.headers();
+        //let out = response.text().await;    
+        let link = parse(headers.get(LINK).unwrap().to_str().unwrap()).unwrap();
+        let next_link = link.get(& Some(String::from("next")));
 
-    match out {
-        Ok(body) => parse_json(conn, repository_id, owner, repository, &body).await,
-        Err(e) => println!("{:?}", e)
-    };
+        let response = Client::new().get(&endpoint);
+        let out = response.text().await;
+
+        match out {
+            Ok(body) => parse_json(conn, repository_id, owner, repository, &body).await,
+            Err(e) => println!("{:?}", e)
+        };
+
+        match next_link {
+            Some(next_link) => println!("{:?}", next_link.uri),
+            None => {}
+        }
+
+    }
     
     Ok(())
 }
@@ -33,7 +50,7 @@ async fn parse_json(conn: &PgConnection, repository_id: i32, _owner: &str, _repo
 
     if parsed.is_array() {
         for obj in parsed.as_array().unwrap() {
-            // println!("{}",to_string_pretty(obj).unwrap());
+            println!("{}",to_string_pretty(obj).unwrap());
             parse_pr(conn, repository_id, _owner, _repository, obj).await;
         }
     } else if parsed.is_object() {
