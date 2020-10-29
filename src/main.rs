@@ -14,13 +14,12 @@ use git_pr_collect::db::connection::establish_connection;
 use git_pr_collect::github::pull_request::collect_pull_request;
 use dotenv::dotenv;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     dotenv().ok();
-    run_collect().await;
+    run_collect();
 }
 
-async fn run_collect() {
+fn run_collect() {
     use git_pr_collect::db::schema::git_repository::dsl::*;
 
     let connection: PgConnection = establish_connection();
@@ -29,6 +28,6 @@ async fn run_collect() {
     
     for result in results {
         println!("owner: {}, repository: {}", result.owner, result.repository);
-        collect_pull_request(&connection, result.pid, &result.owner, &result.repository).await.unwrap()
+        collect_pull_request(&connection, result.pid, &result.owner, &result.repository).unwrap()
     }
 }

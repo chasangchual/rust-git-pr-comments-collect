@@ -1,61 +1,43 @@
 
 #![macro_use] 
 use reqwest::header::LINK;
-use reqwest::Client;
 use reqwest::Error;
 use reqwest::blocking::Response;
 use parse_link_header::parse;
 use serde_json::{from_str, Value, to_string_pretty};
-use std::env;
 use diesel::*;
 use super::super::db::models::{PullRequest, NewPullRequest};
 use super::super::rest_client::base_client::*;
 
-pub async fn collect_pull_request(conn: &PgConnection, repository_id: i32, owner: &str, repository: &str) -> Result<(), Error> {
-    let token: String = env::var("GITHUB_API_TOKEN").expect("GITHUB_API_TOKEN must set");
-
-    let endpoint = format!("https://api.github.com/repos/{owner}/{repository}/pulls?page=1&per_page=100", owner=owner, repository=repository);
+pub fn collect_pull_request(conn: &PgConnection, repository_id: i32, owner: &str, repository: &str) -> Result<(), Error> {
+    let start_endpoint = format!("https://api.github.com/repos/{owner}/{repository}/pulls?page=1&per_page=100", owner=owner, repository=repository);
+    let mut endpoint = start_endpoint;
 
     let base_client = BaseClient::new();
 
-    let response = base_client.get(&endpoint);
+    let mut has_next: bool = true;
 
-    match response {
-        Ok(response) => {
-            if response.status().is_success() {
-                let mut next_link = get_next_link(&response);
-                let out = response.text();    
-        
-                match out {
-                    Ok(body) => parse_json(conn, repository_id, owner, repository, &body).await,
-                    Err(e) => println!("{:?}", e)
-                };
-        
-                while next_link.is_some() {
-                    let response = base_client.get(&endpoint);
-                    match response {
-                        Ok(response) => {
-                            if response.status().is_success() {
-                                next_link = get_next_link(&response);
-                                let out = response.text();    
-                                match out {
-                                    Ok(body) => parse_json(conn, repository_id, owner, repository, &body).await,
-                                    Err(e) => println!("{:?}", e)
-                                };
-                            } else {
-                                next_link = None;
-                            }
-                        },
-                        Err(err) => (),
-                    }
-                }
-            }
-        }
-        Err(err) => (),
+    while has_next {
+        let res = base_client.get(&endpoint);
+        let next_link = match res {
+            Ok(response) => {
+                let next_link = get_next_link(&response);
+                println!("next_link: {:?}", next_link);
+
+                let body = response.text()?;    
+                parse_json(conn, repository_id, owner, repository, &body);
+                next_link
+            },
+            Err(_) => None,
+        };
+
+        has_next = next_link.is_some();
+        endpoint = match next_link {
+            Some(link) => link,
+            None => String::from(""),
+        };
     }
 
-
-    
     Ok(())
 }
 
@@ -71,7 +53,7 @@ fn get_next_link(response: &Response) -> Option<String> {
     }
 }
     
-async fn parse_json(conn: &PgConnection, repository_id: i32, _owner: &str, _repository: &str, json_str: &str) {
+fn parse_json(conn: &PgConnection, repository_id: i32, _owner: &str, _repository: &str, json_str: &str) {
     let parsed: Value = from_str(&json_str).unwrap();    
     println!("is_array: {:?}", parsed.is_array());
     println!("is_object: {:?}", parsed.is_object());
@@ -79,7 +61,7 @@ async fn parse_json(conn: &PgConnection, repository_id: i32, _owner: &str, _repo
     if parsed.is_array() {
         for obj in parsed.as_array().unwrap() {
             // println!("{}",to_string_pretty(obj).unwrap());
-            parse_pr(conn, repository_id, _owner, _repository, obj).await;
+            parse_pr(conn, repository_id, _owner, _repository, obj);
         }
     } else if parsed.is_object() {
         for node in parsed.as_object().unwrap() {
@@ -88,7 +70,7 @@ async fn parse_json(conn: &PgConnection, repository_id: i32, _owner: &str, _repo
     }
 }
 
-async fn parse_pr(conn: &PgConnection, repository_id: i32, _owner: &str, _repository: &str, json_root: &Value) {
+fn parse_pr(conn: &PgConnection, repository_id: i32, _owner: &str, _repository: &str, json_root: &Value) {
 println!("json_root is_array: {:?}", json_root.is_array());
 println!("json_root is_object: {:?}", json_root.is_object());
 
@@ -140,7 +122,7 @@ println!("json_root is_object: {:?}", json_root.is_object());
                         print_str_json("review_comments", href);
                         // let mut rt = tokio::runtime::Runtime::new().unwrap();
                         // rt.block_on(collect_commits(owner, repository, href.as_str().unwrap()));
-                        collect_commits(_owner, _repository, href.as_str().unwrap()).await;
+                        collect_commits(_owner, _repository, href.as_str().unwrap());
                     },
                     None => ()
                 }
@@ -196,17 +178,12 @@ fn get_chile_obj_json<'a>(json_node: &'a Value, child_name: &'a str) -> Option<&
 
 
 // https://api.github.com/repos/apache/kafka/pulls/9418/comments
-pub async fn collect_commits(_owner: &str, _repository: &str, endpoint: &str) -> Result<(), Error>   {
-    let token: String = env::var("GITHUB_API_TOKEN").expect("GITHUB_API_TOKEN must set");
+pub fn collect_commits(_owner: &str, _repository: &str, endpoint: &str) -> Result<(), Error>   {
+    let base_client = BaseClient::new();
 
-    let response = Client::new()
-    .get(endpoint)
-    .bearer_auth(token.as_str())
-    .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36")
-    .send().await?;
+    let response = base_client.get(endpoint);
 
-    let out = response.text().await;
-
+    let out = response.unwrap().text();
 
     match out {
         Ok(body) => {
