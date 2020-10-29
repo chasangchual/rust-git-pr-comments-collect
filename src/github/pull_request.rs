@@ -71,7 +71,7 @@ async fn parse_json(conn: &PgConnection, repository_id: i32, _owner: &str, _repo
 
     if parsed.is_array() {
         for obj in parsed.as_array().unwrap() {
-            println!("{}",to_string_pretty(obj).unwrap());
+            // println!("{}",to_string_pretty(obj).unwrap());
             parse_pr(conn, repository_id, _owner, _repository, obj).await;
         }
     } else if parsed.is_object() {
@@ -119,7 +119,7 @@ println!("json_root is_object: {:?}", json_root.is_object());
         match json_nodes.get("body") {
             Some(v) =>  {
                 print_str_json("body", v);
-                //body = String::from(v.as_str().unwrap());
+                body = String::from(v.as_str().unwrap());
             },
             None => ()
         }
