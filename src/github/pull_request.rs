@@ -1,53 +1,60 @@
 
+#![macro_use] 
 use reqwest::header::LINK;
 use reqwest::Client;
 use reqwest::Error;
-use reqwest::Response;
+use reqwest::blocking::Response;
 use parse_link_header::parse;
 use serde_json::{from_str, Value, to_string_pretty};
 use std::env;
 use diesel::*;
 use super::super::db::models::{PullRequest, NewPullRequest};
+use super::super::rest_client::base_client::*;
 
 pub async fn collect_pull_request(conn: &PgConnection, repository_id: i32, owner: &str, repository: &str) -> Result<(), Error> {
     let token: String = env::var("GITHUB_API_TOKEN").expect("GITHUB_API_TOKEN must set");
 
     let endpoint = format!("https://api.github.com/repos/{owner}/{repository}/pulls?page=1&per_page=100", owner=owner, repository=repository);
 
-    let response = Client::new()
-    .get(&endpoint)
-    .bearer_auth(&(token.as_str()))
-    .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36")
-    .send().await?;
+    let base_client = BaseClient::new();
 
-    if response.status().is_success() {
-        let mut next_link = get_next_link(&response);
-        let out = response.text().await;    
+    let response = base_client.get(&endpoint);
 
-        match out {
-            Ok(body) => parse_json(conn, repository_id, owner, repository, &body).await,
-            Err(e) => println!("{:?}", e)
-        };
-
-        while next_link.is_some() {
-            let response = Client::new()
-            .get(&next_link.unwrap())
-            .bearer_auth(&(token.as_str()))
-            .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36")
-            .send().await?;
-
+    match response {
+        Ok(response) => {
             if response.status().is_success() {
-                next_link = get_next_link(&response);
-                let out = response.text().await;    
+                let mut next_link = get_next_link(&response);
+                let out = response.text();    
+        
                 match out {
                     Ok(body) => parse_json(conn, repository_id, owner, repository, &body).await,
                     Err(e) => println!("{:?}", e)
                 };
-            } else {
-                next_link = None;
+        
+                while next_link.is_some() {
+                    let response = base_client.get(&endpoint);
+                    match response {
+                        Ok(response) => {
+                            if response.status().is_success() {
+                                next_link = get_next_link(&response);
+                                let out = response.text();    
+                                match out {
+                                    Ok(body) => parse_json(conn, repository_id, owner, repository, &body).await,
+                                    Err(e) => println!("{:?}", e)
+                                };
+                            } else {
+                                next_link = None;
+                            }
+                        },
+                        Err(err) => (),
+                    }
+                }
             }
         }
+        Err(err) => (),
     }
+
+
     
     Ok(())
 }
