@@ -44,12 +44,18 @@ pub fn collect_pull_request(conn: &PgConnection, repository_id: i32, owner: &str
 fn get_next_link(response: &Response) -> Option<String> {
     let headers = response.headers();
 
-    let link = parse(headers.get(LINK).unwrap().to_str().unwrap()).unwrap();
-    let next_link = link.get(& Some(String::from("next")));
+    let link = parse(headers.get(LINK).unwrap().to_str().unwrap());
 
-    match next_link {
-        Some(v) => Some(v.raw_uri.clone()),
-        None => None
+    match link {
+        Ok(v) => {
+            let next_link = v.get(& Some(String::from("next")));
+
+            match next_link {
+                Some(v) => Some(v.raw_uri.clone()),
+                None => None
+            }
+                },
+        Err(_) => None
     }
 }
     
