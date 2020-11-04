@@ -118,7 +118,10 @@ println!("json_root is_object: {:?}", json_root.is_object());
         match json_nodes.get("body") {
             Some(v) =>  {
                 print_str_json("body", v);
-                body = String::from(v.as_str().unwrap());
+                body = match v.as_str() {
+                    Some(b) => String::from(b),
+                    None => String::from(""),
+                }
             },
             None => ()
         }
