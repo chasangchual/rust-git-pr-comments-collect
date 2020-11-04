@@ -10,7 +10,7 @@ extern crate git_pr_collect;
 
 use git_pr_collect::db::models::*;
 use diesel::prelude::*;
-use git_pr_collect::db::connection::establish_connection;
+use git_pr_collect::db::connection::DBClient;
 use git_pr_collect::github::pull_request::collect_pull_request;
 use dotenv::dotenv;
 
@@ -21,10 +21,10 @@ fn main() {
 
 fn run_collect() {
     use git_pr_collect::db::schema::git_repository::dsl::*;
+    
+    let dbClient: DBClient = DBClient::new();
 
-    let connection: PgConnection = establish_connection();
-
-    let results = git_repository.load::<GitRepository>(&connection).expect("Error load git repository");
+    let results = git_repository.load::<GitRepository>(&dbClient.getConnection()).expect("Error load git repository");
     
     for result in results {
         println!("owner: {}, repository: {}", result.owner, result.repository);

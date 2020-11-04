@@ -3,17 +3,14 @@ use diesel::pg::PgConnection;
 use std::env;
 
 pub struct DBClient {
-    client: PgConnection,
-    url: String,
+    connection: PgConnection,
 }
 
 impl DBClient {
     pub fn new() -> DBClient {
-        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must set");
-
+        let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must set");
         DBClient {
-            url: database_url.clone(),
-            client: PgConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url))
+            connection: PgConnection::establish(&db_url).expect(&format!("Error connecting to {}", &db_url)),
         }
     }
 }
