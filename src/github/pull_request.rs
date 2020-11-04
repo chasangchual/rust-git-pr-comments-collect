@@ -7,9 +7,10 @@ use parse_link_header::parse;
 use serde_json::{from_str, Value, to_string_pretty};
 use diesel::*;
 use super::super::db::models::{PullRequest, NewPullRequest};
+use super::super::db::connection::*;
 use super::super::rest_client::base_client::*;
 
-pub fn collect_pull_request(conn: &PgConnection, repository_id: i32, owner: &str, repository: &str) -> Result<(), Error> {
+pub fn collect_pull_request(connection_pool: &PgPool, repository_id: i32, owner: &str, repository: &str) -> Result<(), Error> {
     let start_endpoint = format!("https://api.github.com/repos/{owner}/{repository}/pulls?page=1&per_page=100", owner=owner, repository=repository);
     let mut endpoint = start_endpoint;
 
@@ -25,7 +26,7 @@ pub fn collect_pull_request(conn: &PgConnection, repository_id: i32, owner: &str
                 println!("next_link: {:?}", next_link);
 
                 let body = response.text()?;    
-                parse_json(conn, repository_id, owner, repository, &body);
+                parse_json(connection_pool, repository_id, owner, repository, &body);
                 next_link
             },
             Err(_) => None,
@@ -49,19 +50,20 @@ fn get_next_link(response: &Response) -> Option<String> {
         match link {
             Ok(v) => {
                 let next_link = v.get(& Some(String::from("next")));
+                println!("next_link from the link header: {:?}", next_link);
                 match next_link {
                     Some(v) => Some(v.raw_uri.clone()),
                     None => None
-                };
+                }
             },
-            Err(_) => ()
+            Err(_) => None
         }
+    } else {
+        None
     }
-
-    None
 }
     
-fn parse_json(conn: &PgConnection, repository_id: i32, _owner: &str, _repository: &str, json_str: &str) {
+fn parse_json(onnection_pool: &PgPool, repository_id: i32, _owner: &str, _repository: &str, json_str: &str) {
     let parsed: Value = from_str(&json_str).unwrap();    
     println!("is_array: {:?}", parsed.is_array());
     println!("is_object: {:?}", parsed.is_object());
@@ -69,7 +71,7 @@ fn parse_json(conn: &PgConnection, repository_id: i32, _owner: &str, _repository
     if parsed.is_array() {
         for obj in parsed.as_array().unwrap() {
             // println!("{}",to_string_pretty(obj).unwrap());
-            parse_pr(conn, repository_id, _owner, _repository, obj);
+            parse_pr(onnection_pool, repository_id, _owner, _repository, obj);
         }
     } else if parsed.is_object() {
         for node in parsed.as_object().unwrap() {
@@ -78,7 +80,7 @@ fn parse_json(conn: &PgConnection, repository_id: i32, _owner: &str, _repository
     }
 }
 
-fn parse_pr(conn: &PgConnection, repository_id: i32, _owner: &str, _repository: &str, json_root: &Value) {
+fn parse_pr(onnection_pool: &PgPool, repository_id: i32, _owner: &str, _repository: &str, json_root: &Value) {
 println!("json_root is_array: {:?}", json_root.is_array());
 println!("json_root is_object: {:?}", json_root.is_object());
 
@@ -130,7 +132,8 @@ println!("json_root is_object: {:?}", json_root.is_object());
                         print_str_json("review_comments", href);
                         // let mut rt = tokio::runtime::Runtime::new().unwrap();
                         // rt.block_on(collect_commits(owner, repository, href.as_str().unwrap()));
-                        collect_commits(_owner, _repository, href.as_str().unwrap());
+                        
+                        // collect_commits(_owner, _repository, href.as_str().unwrap());
                     },
                     None => ()
                 }
@@ -141,10 +144,10 @@ println!("json_root is_object: {:?}", json_root.is_object());
         println!("pull_request_number: {}", pull_request_number);
         println!("repository_id: {}", repository_id);
 
-        create_pull_request(conn, &repository_id, &(pull_request_number as i32), title.as_str(), url.as_str(), body.as_str());
+        create_pull_request(onnection_pool, &repository_id, &(pull_request_number as i32), title.as_str(), url.as_str(), body.as_str());
     }
 }
-pub fn create_pull_request<'a>(conn: &PgConnection, repository_id: &'a i32, pr_id: &'a i32, title: &'a str, url: &'a str, body: &'a str) -> PullRequest {
+pub fn create_pull_request<'a>(onnection_pool: &PgPool, repository_id: &'a i32, pr_id: &'a i32, title: &'a str, url: &'a str, body: &'a str) -> Result<PullRequest, super::super::db::connection::Error> {
     use super::super::db::schema::pull_request;
     let new_pull_request = NewPullRequest {
         repository_id: repository_id,
@@ -153,12 +156,18 @@ pub fn create_pull_request<'a>(conn: &PgConnection, repository_id: &'a i32, pr_i
         endpoint: url,
         body: body,
     };
-
-    diesel::insert_into(pull_request::table)
-        .values(&new_pull_request)
-        .get_result(conn)
-        .expect("Error saving new pull request")
     
+    println!("create_pull_request for {:?}", pr_id);
+
+    match get_connection(&onnection_pool) {
+        Ok(connection) => {
+                Ok(diesel::insert_into(pull_request::table)
+                .values(&new_pull_request)
+                .get_result(&connection)
+                .expect("Error saving new pull request"))
+        },
+        Err(error) => Err(error),                
+    }
 }
 
 fn print_str_json(name: &str, json_node: &Value) {

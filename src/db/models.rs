@@ -1,5 +1,9 @@
 use diesel::pg::data_types::PgTimestamp;
+use super::schema;
+use super::schema::git_repository;
 use super::schema::pull_request;
+use super::connection::PgPooledConnection;
+use diesel::prelude::*;
 
 #[derive(Queryable)]
 pub struct GitRepository {
@@ -44,4 +48,13 @@ pub struct Comments {
     pub html_url: String,
     pub created_at: PgTimestamp,
     pub updated_at: PgTimestamp,
+}
+
+impl GitRepository {
+    pub fn list_all(connection: &PgPooledConnection) -> Vec<GitRepository>{
+        use super::schema::git_repository::dsl::*;
+
+        let results = git_repository.load::<GitRepository>(connection).expect("Error load git repository");
+        results
+    }
 }
