@@ -80,7 +80,7 @@ fn parse_json(onnection_pool: &PgPool, repository_id: i32, _owner: &str, _reposi
     }
 }
 
-fn parse_pr(onnection_pool: &PgPool, repository_id: i32, _owner: &str, _repository: &str, json_root: &Value) {
+fn parse_pr(connection_pool: &PgPool, repository_id: i32, _owner: &str, _repository: &str, json_root: &Value) {
 println!("json_root is_array: {:?}", json_root.is_array());
 println!("json_root is_object: {:?}", json_root.is_object());
 
@@ -146,11 +146,18 @@ println!("json_root is_object: {:?}", json_root.is_object());
 
         println!("pull_request_number: {}", pull_request_number);
         println!("repository_id: {}", repository_id);
-
-        create_pull_request(onnection_pool, &repository_id, &(pull_request_number as i32), title.as_str(), url.as_str(), body.as_str());
+ 
+        match get_connection(&connection_pool) {
+            Ok(connection) => {
+                if ! PullRequest::exists(&connection, repository_id, pull_request_number as i32) {
+                    create_pull_request(connection_pool, &repository_id, &(pull_request_number as i32), title.as_str(), url.as_str(), body.as_str());
+                }        
+            },
+            Err(error) => println!("{:?}", error),                
+        };        
     }
 }
-pub fn create_pull_request<'a>(onnection_pool: &PgPool, repository_id: &'a i32, pr_id: &'a i32, title: &'a str, url: &'a str, body: &'a str) -> Result<PullRequest, super::super::db::connection::Error> {
+pub fn create_pull_request<'a>(connection_pool: &PgPool, repository_id: &'a i32, pr_id: &'a i32, title: &'a str, url: &'a str, body: &'a str) -> Result<PullRequest, super::super::db::connection::Error> {
     use super::super::db::schema::pull_request;
     let new_pull_request = NewPullRequest {
         repository_id: repository_id,
@@ -162,7 +169,7 @@ pub fn create_pull_request<'a>(onnection_pool: &PgPool, repository_id: &'a i32, 
     
     println!("create_pull_request for {:?}", pr_id);
 
-    match get_connection(&onnection_pool) {
+    match get_connection(&connection_pool) {
         Ok(connection) => {
                 Ok(diesel::insert_into(pull_request::table)
                 .values(&new_pull_request)
