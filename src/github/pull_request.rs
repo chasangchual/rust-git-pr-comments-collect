@@ -126,6 +126,18 @@ println!("json_root is_object: {:?}", json_root.is_object());
             None => ()
         }
 
+        println!("pull_request_number: {}", pull_request_number);
+        println!("repository_id: {}", repository_id);
+ 
+        match get_connection(&connection_pool) {
+            Ok(connection) => {
+                if ! PullRequest::exists(&connection, repository_id, pull_request_number as i32) {
+                    create_pull_request(connection_pool, &repository_id, &(pull_request_number as i32), title.as_str(), url.as_str(), body.as_str());
+                }        
+            },
+            Err(error) => println!("{:?}", error),                
+        };        
+
         match json_nodes.get("_links") {
             Some(v) =>  {
                 match get_chile_obj_json(v, "review_comments") {
@@ -143,18 +155,6 @@ println!("json_root is_object: {:?}", json_root.is_object());
             },
             None => ()
         }
-
-        println!("pull_request_number: {}", pull_request_number);
-        println!("repository_id: {}", repository_id);
- 
-        match get_connection(&connection_pool) {
-            Ok(connection) => {
-                if ! PullRequest::exists(&connection, repository_id, pull_request_number as i32) {
-                    create_pull_request(connection_pool, &repository_id, &(pull_request_number as i32), title.as_str(), url.as_str(), body.as_str());
-                }        
-            },
-            Err(error) => println!("{:?}", error),                
-        };        
     }
 }
 pub fn create_pull_request<'a>(connection_pool: &PgPool, repository_id: &'a i32, pr_id: &'a i32, title: &'a str, url: &'a str, body: &'a str) -> Result<PullRequest, super::super::db::connection::Error> {
