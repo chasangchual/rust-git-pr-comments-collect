@@ -132,7 +132,7 @@ println!("json_root is_object: {:?}", json_root.is_object());
         match get_connection(&connection_pool) {
             Ok(connection) => {
                 if ! PullRequest::exists(&connection, repository_id, pull_request_number as i32) {
-                    create_pull_request(connection_pool, &repository_id, &(pull_request_number as i32), title.as_str(), url.as_str(), body.as_str());
+                    PullRequest::create(&connection, repository_id, pull_request_number as i32, title, body, url);
                 }        
             },
             Err(error) => println!("{:?}", error),                
@@ -155,28 +155,6 @@ println!("json_root is_object: {:?}", json_root.is_object());
             },
             None => ()
         }
-    }
-}
-pub fn create_pull_request<'a>(connection_pool: &PgPool, repository_id: &'a i32, pr_id: &'a i32, title: &'a str, url: &'a str, body: &'a str) -> Result<PullRequest, super::super::db::connection::Error> {
-    use super::super::db::schema::pull_request;
-    let new_pull_request = NewPullRequest {
-        repository_id: repository_id,
-        number: pr_id,
-        title: title,
-        endpoint: url,
-        body: body,
-    };
-    
-    println!("create_pull_request for {:?}", pr_id);
-
-    match get_connection(&connection_pool) {
-        Ok(connection) => {
-                Ok(diesel::insert_into(pull_request::table)
-                .values(&new_pull_request)
-                .get_result(&connection)
-                .expect("Error saving new pull request"))
-        },
-        Err(error) => Err(error),                
     }
 }
 

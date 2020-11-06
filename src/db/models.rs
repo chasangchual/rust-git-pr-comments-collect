@@ -1,7 +1,8 @@
 use diesel::pg::data_types::PgTimestamp;
-use super::connection::PgPooledConnection;
 use diesel::prelude::*;
+use diesel::result::Error;
 
+use super::connection::PgPooledConnection;
 use super::schema;
 use super::schema::git_repository;
 use super::schema::git_repository::dsl::*;
@@ -31,12 +32,12 @@ pub struct PullRequest {
 
 #[derive(Insertable)]
 #[table_name="pull_request"]
-pub struct NewPullRequest<'a> {
-    pub repository_id: &'a i32,
-    pub number: &'a i32,
-    pub endpoint: &'a str,
-    pub title: &'a str,
-    pub body: &'a str,
+pub struct NewPullRequest {
+    pub repository_id: i32,
+    pub number: i32,
+    pub title: String,
+    pub body: String,
+    pub endpoint: String,
 }
 
 #[derive(Queryable)]
@@ -83,5 +84,21 @@ impl PullRequest {
                              .load::<PullRequest>(connection)
                              .expect("Error loading pull requests");
         results.len() >= 1
+    }
+
+    pub fn create(connection: &PgPooledConnection, _repository_pid: i32, _number: i32, _title: String, _body: String, _endpoint: String)  -> Result<PullRequest, Error> {
+        let new_pull_request = NewPullRequest {
+            repository_id: _repository_pid,
+            number: _number,
+            title: _title,
+            body: _body,
+            endpoint: _endpoint,
+        };
+
+        let pull_requst = diesel::insert_into(pull_request::table)
+                .values(&new_pull_request)
+                .get_result::<PullRequest>(connection);
+                
+        pull_requst
     }
 }
