@@ -8,6 +8,8 @@ use super::schema::git_repository;
 use super::schema::git_repository::dsl::*;
 use super::schema::pull_request;
 use super::schema::pull_request::dsl::*;
+use super::schema::comments;
+use super::schema::comments::dsl::*;
 
 #[derive(Queryable)]
 pub struct GitRepository {
@@ -43,7 +45,7 @@ pub struct NewPullRequest {
 #[derive(Queryable)]
 pub struct Comments {
     pub pid: i32,
-    pub pr_pid: i32,
+    pub pr_id: i32,
     pub number: i32,
     pub endpoint: String,
     pub body: String,
@@ -52,6 +54,18 @@ pub struct Comments {
     pub html_url: String,
     pub created_at: PgTimestamp,
     pub updated_at: PgTimestamp,
+}
+
+#[derive(Insertable)]
+#[table_name="comments"]
+pub struct NewComments {
+    pub pr_id: i32,
+    pub number: i32,
+    pub endpoint: String,
+    pub body: String,
+    pub diff_hunk: String,
+    pub path: String,
+    pub html_url: String,
 }
 
 impl GitRepository {
@@ -68,19 +82,19 @@ impl PullRequest {
         results
     }
 
-    pub fn get(connection: &PgPooledConnection, _repository_id: i32, _pull_request_number: i32) -> Vec<PullRequest>{
+    pub fn get(connection: &PgPooledConnection, _repository_id: i32, _number: i32) -> Vec<PullRequest>{
         let results = pull_request
                              .filter(repository_id.eq(_repository_id))
-                             .filter(number.eq(_pull_request_number))
+                             .filter(pull_request::number.eq(_number))
                              .load::<PullRequest>(connection)
                              .expect("Error loading pull requests");
         results
     }
 
-    pub fn exists(connection: &PgPooledConnection, _repository_id: i32, _pull_request_number: i32) -> bool {
+    pub fn exists(connection: &PgPooledConnection, _repository_id: i32, _number: i32) -> bool {
         let results = pull_request
                              .filter(repository_id.eq(_repository_id))
-                             .filter(number.eq(_pull_request_number))
+                             .filter(pull_request::number.eq(_number))
                              .load::<PullRequest>(connection)
                              .expect("Error loading pull requests");
         results.len() >= 1
@@ -98,7 +112,42 @@ impl PullRequest {
         let pull_requst = diesel::insert_into(pull_request::table)
                 .values(&new_pull_request)
                 .get_result::<PullRequest>(connection);
-                
+
         pull_requst
     }
 }
+
+impl Comments {
+    pub fn list_all(connection: &PgPooledConnection) -> Vec<Comments> {
+        let results = comments.load::<Comments>(connection).expect("Error load git pull request review comments");
+        results
+    }
+
+    pub fn exists(connection: &PgPooledConnection, _pr_pid: i32, _number: i32) -> bool {
+        let results = comments
+                             .filter(pr_id.eq(_pr_pid))
+                             .filter(comments::number.eq(_number))
+                             .load::<Comments>(connection)
+                             .expect("Error loading review comments");
+        results.len() >= 1
+    }
+
+    pub fn create(connection: &PgPooledConnection, _pr_pid: i32, _number: i32, _endpoint: String, _body: String, _diff_hunk: String, _path: String, _html_url: String)  -> Result<Comments, Error> {
+        let new_comment = NewComments {
+            pr_id: _pr_pid,
+            number: _number,
+            endpoint: _endpoint,
+            body: _body,
+            diff_hunk: _diff_hunk,
+            path: _path,
+            html_url: _html_url,
+        };
+
+        let comment = diesel::insert_into(comments::table)
+                .values(&new_comment)
+                .get_result::<Comments>(connection);
+
+        comment
+    }
+}
+
