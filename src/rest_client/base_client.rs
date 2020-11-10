@@ -1,8 +1,8 @@
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, CONTENT_TYPE, USER_AGENT};
 use reqwest::Error;
 use reqwest::blocking::{Client, Response};
-use serde::Serialize;
 use std::env;
+use url::{Url, ParseError};
 
 #[derive(Clone)]
 pub struct BaseClient {
@@ -27,6 +27,17 @@ impl BaseClient {
 
     /// Get a resource
     pub fn get(&self, endpoint: &str) -> Result<Response, Error> {
+        /*
+        // url parse test        
+        println!("endpoint to get: {}", endpoint);
+
+        let url = Url::parse(endpoint);
+        
+        match url {
+            Ok(url) => println!("parsed url: {}", url),
+            Err(error) => (),
+        }
+        */
         let headers = self.headers.clone();
 
         match self.client
@@ -37,5 +48,22 @@ impl BaseClient {
             Ok(response) => Ok(response),
             Err(error) => Err(error),
         }
+    }    
+
+    pub fn get_as_json(&self, endpoint: &str) -> Result<serde_json::value::Value, Error> {
+        let headers = self.headers.clone();
+
+        match self.client
+        .get(endpoint)
+        .bearer_auth(&(self.api_token.as_str()))
+        .headers(headers)
+        .send() 
+        .and_then(|mut r| r.json()) {
+            Ok(response) => Ok(response),
+            Err(error) =>  {
+                println!("{}", error);
+                Err(error)
+            },
+        }    
     }    
 }
