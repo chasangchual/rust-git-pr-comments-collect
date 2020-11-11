@@ -11,7 +11,7 @@ pub fn collect_review_comment(connection_pool: &PgPool, pull_request: &PullReque
 
     match comment_endpoint {
         Some(endpoint) => {
-            println!("get_review_comments_links: {}", endpoint.as_str());
+            // println!("get_review_comments_links: {}", endpoint.as_str());
 
             let base_client = BaseClient::new();
             let res = base_client.get(endpoint.as_str());
@@ -79,8 +79,8 @@ pub fn collect_review_comment(connection_pool: &PgPool, pull_request: &PullReque
 
                             println!("cr comment number: {}", number);
                             println!("cr comment endpoint: {}", endpoint);
-                            println!("cr comment body: {}", body);
-                            println!("cr comment diff_hunk: {}", diff_hunk);
+                            // println!("cr comment body: {}", body);
+                            // println!("cr comment diff_hunk: {}", diff_hunk);
                             println!("cr comment path: {}", path);
                             println!("cr comment html_url: {}", html_url);
                             match get_connection(&connection_pool) {
@@ -93,8 +93,9 @@ pub fn collect_review_comment(connection_pool: &PgPool, pull_request: &PullReque
                             };    
                         }
                     } else {
+                        println!("get_review_comments_links: {}", endpoint.as_str());
                         if comments.is_object() {
-                            println!("comments: {}",to_string_pretty(comments.as_str().unwrap()).unwrap());
+                            println!("comments as object: {}",to_string_pretty(comments.as_str().unwrap()).unwrap());
                         } 
                     }
                 },

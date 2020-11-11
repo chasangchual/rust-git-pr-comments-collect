@@ -7,12 +7,25 @@ use git_pr_collect::db::models::*;
 use git_pr_collect::db::connection::*;
 use git_pr_collect::github::pull_request::collect_pull_request;
 use git_pr_collect::github::comments::collect_review_comment;
+use git_pr_collect::github::repositories::collect_repositories;
 use dotenv::dotenv;
 
 fn main() {
     dotenv().ok();
-    // run_pull_request_collect();
-    run_review_comment_collect();
+    run_collect_repositories();
+    //run_pull_request_collect();
+    //run_review_comment_collect();
+}
+
+fn run_collect_repositories() {
+    let pg_pool = establish_connection();
+
+    match get_connection(&pg_pool) {
+        Ok(connection) => {
+            collect_repositories(&pg_pool).unwrap()
+        },
+        Err(error) => println!("{}", error),                
+    }
 }
 
 fn run_pull_request_collect() {
