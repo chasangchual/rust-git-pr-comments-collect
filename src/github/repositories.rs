@@ -8,6 +8,7 @@ use diesel::*;
 use super::super::db::models::{PullRequest, NewPullRequest};
 use super::super::db::connection::*;
 use super::super::rest_client::base_client::*;
+use regex::Regex;
 
 pub fn collect_repositories(connection_pool: &PgPool) -> Result<(), Error> {
     let start_endpoint = format!("https://api.github.com/repositories?page=1&per_page=100");
@@ -47,9 +48,14 @@ fn get_next_link(response: &Response) -> Option<String> {
     let headers = response.headers();
 
     if headers.get(LINK).is_some() {
-        println!("headers.get(LINK).unwrap().to_str(): {:?}", headers.get(LINK).unwrap().to_str().unwrap());
+        // println!("headers.get(LINK).unwrap().to_str(): {:?}", headers.get(LINK).unwrap().to_str().unwrap());
+        // <https://api.github.com/repositories?page=1&per_page=100&since=369>; rel=\"next\", <https://api.github.com/repositories{?since}>; rel=\"first\""
 
-        let link = parse(headers.get(LINK).unwrap().to_str().unwrap());
+        let link_header = headers.get(LINK).unwrap().to_str().unwrap();
+        let re = Regex::new(r"\{.*\}").unwrap();
+        let link_header = re.replace_all(link_header, "");
+
+        let link = parse(link_header.into_owned().as_str());
         match link {
             Ok(v) => {
                 let next_link = v.get(& Some(String::from("next")));
