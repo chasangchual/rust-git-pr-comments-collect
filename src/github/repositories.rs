@@ -28,7 +28,7 @@ pub fn collect_repositories(connection_pool: &PgPool) -> Result<(), Error> {
                 println!("next_link: {:?}", next_link);
 
                 let body = response.text()?;    
-                // parse_json(connection_pool, repository_id, owner, repository, &body);
+                process_repositories(connection_pool, &body);
                 next_link
             },
             Err(_) => None,
@@ -43,6 +43,197 @@ pub fn collect_repositories(connection_pool: &PgPool) -> Result<(), Error> {
 
     Ok(())
 }
+
+fn process_repositories(onnection_pool: &PgPool, json_str: &str) {
+    // println!("{}",json_str);
+
+    let parsed: Value = from_str(&json_str).unwrap();    
+    if parsed.is_array() {
+        for obj in parsed.as_array().unwrap() {
+            // println!("{}",to_string_pretty(obj).unwrap());
+            process_repository(onnection_pool, obj);
+        }
+    }
+}
+
+fn process_repository(onnection_pool: &PgPool, json_obj: &Value) {
+    if json_obj.is_object() {
+        let json_nodes = json_obj.as_object().unwrap();
+
+        let mut id: i64 = -1;
+        let mut url: String = String::from("") ;
+
+        match json_nodes.get("id") {
+            Some(v) => {
+                id = v.as_i64().unwrap();
+            },
+            None => ()
+        }
+
+        match json_nodes.get("url") {
+            Some(v) => {
+                url = String::from(v.as_str().unwrap());
+            },
+            None => ()
+        }
+
+        process_repository_detail(onnection_pool, url.as_str());
+    }
+}
+
+fn process_repository_detail(connection_pool: &PgPool, repository_url: &str) {
+    let base_client = BaseClient::new();
+    let res = base_client.get(repository_url);
+
+    match res {
+        Ok(response) => {
+            let body = response.text().unwrap(); 
+            let json_obj: Value = from_str(&body).unwrap();  
+            if json_obj.is_object() {
+                let json_nodes = json_obj.as_object().unwrap();
+        
+                let mut id: i64 = -1;
+                let mut name: String = String::from("") ;
+                let mut full_name: String = String::from("") ;
+                let mut private: bool = false;
+                let mut description: String = String::from("") ;
+                let mut url: String = String::from("") ;
+                let mut login: String = String::from("") ;
+        
+                let mut size: i64 = -1;
+                let mut stargazers_count: i64 = -1;
+                let mut watchers_count: i64 = -1;
+                let mut language: String = String::from("") ;
+                let mut forks_count: i64 = -1;
+                let mut open_issues_count: i64 = -1;
+                let mut open_issues: i64 = -1;
+                let mut watchers: i64 = -1;
+                let mut subscribers_count: i64 = -1;
+
+
+                match json_nodes.get("id") {
+                    Some(v) => {
+                        id = v.as_i64().unwrap();
+                    },
+                    None => ()
+                }
+                match json_nodes.get("name") {
+                    Some(v) => {
+                        full_name = String::from(v.as_str().unwrap());
+                    },
+                    None => ()
+                }
+                match json_nodes.get("full_name") {
+                    Some(v) => {
+                        full_name = String::from(v.as_str().unwrap());
+                    },
+                    None => ()
+                }
+                match json_nodes.get("private") {
+                    Some(v) => {
+                        private = v.as_bool().unwrap();
+                    },
+                    None => ()
+                }
+                match json_nodes.get("description") {
+                    Some(v) => {
+                        match  v.as_str() {
+                            Some(v) => {
+                                description = String::from(v);
+                            },
+                            None => ()
+                        }
+                    },
+                    None => ()
+                }
+                match json_nodes.get("url") {
+                    Some(v) => {
+                        url = String::from(v.as_str().unwrap());
+                    },
+                    None => ()
+                }
+                match json_nodes.get("owner") {
+                    Some(v) =>  {
+                        login = v.as_object().unwrap().get("login").unwrap().as_str().unwrap().to_string();
+                    },
+                    None => ()
+                }
+        
+                match json_nodes.get("subscribers_count") {
+                    Some(v) => {
+                        subscribers_count = v.as_i64().unwrap();
+                    },
+                    None => ()
+                }
+
+                match json_nodes.get("watchers") {
+                    Some(v) => {
+                        watchers = v.as_i64().unwrap();
+                    },
+                    None => ()
+                }
+
+                match json_nodes.get("open_issues") {
+                    Some(v) => {
+                        open_issues = v.as_i64().unwrap();
+                    },
+                    None => ()
+                }
+
+                match json_nodes.get("open_issues_count") {
+                    Some(v) => {
+                        open_issues_count = v.as_i64().unwrap();
+                    },
+                    None => ()
+                }
+
+                match json_nodes.get("forks_count") {
+                    Some(v) => {
+                        forks_count = v.as_i64().unwrap();
+                    },
+                    None => ()
+                }
+
+                match json_nodes.get("language") {
+                    Some(v) => {
+                        match  v.as_str() {
+                            Some(v) => {
+                                language = String::from(v);
+                            },
+                            None => ()
+                        }
+                    },
+                    None => ()
+                }
+
+                match json_nodes.get("watchers_count") {
+                    Some(v) => {
+                        watchers_count = v.as_i64().unwrap();
+                    },
+                    None => ()
+                }
+
+                match json_nodes.get("stargazers_count") {
+                    Some(v) => {
+                        stargazers_count = v.as_i64().unwrap();
+                    },
+                    None => ()
+                }
+
+                match json_nodes.get("size") {
+                    Some(v) => {
+                        size = v.as_i64().unwrap();
+                    },
+                    None => ()
+                }
+
+                println!("{} {} {} {} {} {} {}", id, full_name, private, description, url, login, language);
+            }
+        },
+        Err(error) => println!("{:?}", error), 
+    };
+}
+
 
 fn get_next_link(response: &Response) -> Option<String> {
     let headers = response.headers();
