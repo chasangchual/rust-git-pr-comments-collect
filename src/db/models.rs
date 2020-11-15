@@ -34,6 +34,27 @@ pub struct GitRepository {
     pub updated_at: PgTimestamp,
 }
 
+#[derive(Insertable)]
+#[table_name="git_repository"]
+pub struct NewGitRepository {
+    pub owner: String,
+    pub repository: String,
+    pub number: i32,
+    pub full_name: String,
+    pub private: bool,
+    pub description: String,
+    pub language: String,
+    pub url: String,
+    pub size: i32,
+    pub stargazers_count: i32,
+    pub watchers_count: i32,
+    pub forks_count: i32,
+    pub open_issues_count: i32,
+    pub open_issues: i32,
+    pub watchers: i32,
+    pub subscribers_count: i32,
+}
+
 #[derive(Queryable, Debug, Clone, PartialEq)]
 pub struct PullRequest {
     pub pid: i32,
@@ -87,6 +108,45 @@ impl GitRepository {
         let results = git_repository.load::<GitRepository>(connection).expect("Error load git repository");
         results
     }
+
+    pub fn exists(connection: &PgPooledConnection, _repository_num: i32, _owner: String, _name: String) -> bool {
+        let results = git_repository
+                            .filter(git_repository::number.eq(_repository_num))
+                            .filter(owner.eq(_owner))
+                            .filter(repository.eq(_name))
+                            .load::<GitRepository>(connection)
+                            .expect("Error loading git repository");
+        results.len() >= 1
+    }
+    
+    pub fn create(connection: &PgPooledConnection, _repository_number: i32, _owner: String, _repository: String, _full_name: String, _private: bool,
+                                                   _description: String, _language: String, _url: String, _size: i32, _stargazers_count: i32, 
+                                                   _watchers_count: i32, _forks_count: i32, _open_issues_count: i32, _open_issues: i32, _watchers: i32,  _subscribers_count: i32)  -> Result<GitRepository, Error> {
+        let new_git_repository = NewGitRepository {
+            owner: _owner,
+            repository: _repository,
+            number: _repository_number,
+            full_name: _full_name,
+            private: _private,
+            description: _description,
+            language: _language,
+            url: _url,
+            size: _size,
+            stargazers_count: _stargazers_count,
+            watchers_count: _watchers_count,
+            forks_count: _forks_count,
+            open_issues_count: _open_issues_count,
+            open_issues: _open_issues,
+            watchers: _watchers,
+            subscribers_count: _subscribers_count,
+        };
+
+        let response = diesel::insert_into(git_repository::table)
+                .values(&new_git_repository)
+                .get_result::<GitRepository>(connection);
+
+        response
+    }
 }
 
 
@@ -123,11 +183,11 @@ impl PullRequest {
             endpoint: _endpoint,
         };
 
-        let pull_requst = diesel::insert_into(pull_request::table)
+        let response = diesel::insert_into(pull_request::table)
                 .values(&new_pull_request)
                 .get_result::<PullRequest>(connection);
 
-        pull_requst
+        response
     }
 }
 
@@ -157,11 +217,11 @@ impl Comments {
             html_url: _html_url,
         };
 
-        let comment = diesel::insert_into(comments::table)
+        let response = diesel::insert_into(comments::table)
                 .values(&new_comment)
                 .get_result::<Comments>(connection);
 
-        comment
+        response
     }
 }
 
