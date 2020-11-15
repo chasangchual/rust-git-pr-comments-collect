@@ -11,7 +11,7 @@ use super::super::rest_client::base_client::*;
 use regex::Regex;
 
 pub fn collect_repositories(connection_pool: &PgPool) -> Result<(), Error> {
-    let start_endpoint = format!("https://api.github.com/repositories?page=1&per_page=100");
+    let start_endpoint = format!("https://api.github.com/repositories?page=1&per_page=100&since=22398");
     let mut endpoint = start_endpoint;
 
     let base_client = BaseClient::new();
@@ -110,7 +110,9 @@ fn process_repository_detail(connection_pool: &PgPool, repository_url: &str) {
                 let mut watchers: i64 = -1;
                 let mut subscribers_count: i64 = -1;
 
-
+                let mut created_at: String = String::from("") ;
+                let mut updated_at: String = String::from("") ;
+                
                 match json_nodes.get("id") {
                     Some(v) => {
                         id = v.as_i64().unwrap();
@@ -227,13 +229,29 @@ fn process_repository_detail(connection_pool: &PgPool, repository_url: &str) {
                     None => ()
                 }
 
+                match json_nodes.get("created_at") {
+                    Some(v) => {
+                        created_at = String::from(v.as_str().unwrap());
+                    },
+                    None => ()
+                }
+                
+                match json_nodes.get("updated_at") {
+                    Some(v) => {
+                        updated_at = String::from(v.as_str().unwrap());
+                    },
+                    None => ()
+                }
+
+                
+                
                 println!("{} {} {} {} {} {} {}", id, full_name, private, description, url, owner, language);
                 match get_connection(&connection_pool) {
                     Ok(connection) => {
                         if ! GitRepository::exists(&connection, id) {
                             GitRepository::create(&connection, id, owner, name, full_name, private, description,
                             language, url, size as i32, stargazers_count as i32, watchers_count as i32, forks_count as i32,
-                        open_issues_count as i32, open_issues_count as i32, watchers_count as i32, subscribers_count as i32 );
+                        open_issues_count as i32, open_issues as i32, watchers as i32, subscribers_count as i32, created_at, updated_at );
                         }        
                     },
                     Err(error) => println!("get_connection error {:?}", error),                

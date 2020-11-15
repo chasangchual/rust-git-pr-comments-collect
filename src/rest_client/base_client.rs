@@ -11,6 +11,10 @@ pub struct BaseClient {
     headers: HeaderMap,
 }
 
+// Rate limt
+// https://developer.github.com/apps/building-github-apps/understanding-rate-limits-for-github-apps/#:~:text=All%20OAuth%20applications%20authorized%20by,per%20hour%20for%20that%20user.
+// https://developer.github.com/v3/#rate-limiting
+
 impl BaseClient {
     pub fn new() -> BaseClient {
         let token: String = env::var("GITHUB_API_TOKEN").expect("GITHUB_API_TOKEN must set");

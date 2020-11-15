@@ -11,6 +11,8 @@ use super::schema::pull_request::dsl::*;
 use super::schema::comments;
 use super::schema::comments::dsl::*;
 
+use chrono::{DateTime, Duration, FixedOffset};
+
 #[derive(Queryable)]
 pub struct GitRepository {
     pub pid: i32,
@@ -53,6 +55,8 @@ pub struct NewGitRepository {
     pub open_issues: i32,
     pub watchers: i32,
     pub subscribers_count: i32,
+    pub created_at: PgTimestamp,
+    pub updated_at: PgTimestamp,
 }
 
 #[derive(Queryable, Debug, Clone, PartialEq)]
@@ -121,7 +125,12 @@ impl GitRepository {
                                                    _full_name: String, _private: bool, _description: String, 
                                                    _language: String, _url: String, _size: i32, _stargazers_count: i32, 
                                                    _watchers_count: i32, _forks_count: i32, _open_issues_count: i32, 
-                                                   _open_issues: i32, _watchers: i32,  _subscribers_count: i32)  -> Result<GitRepository, Error> {
+                                                   _open_issues: i32, _watchers: i32,  _subscribers_count: i32,
+                                                   _created_at: String, _updated_at:String)  -> Result<GitRepository, Error> {
+
+        let repository_created_at: DateTime<FixedOffset> = DateTime::parse_from_rfc3339(_created_at.as_str()).unwrap();
+        let repository_updated_at: DateTime<FixedOffset> = DateTime::parse_from_rfc3339(_updated_at.as_str()).unwrap();
+        
         let new_git_repository = NewGitRepository {
             owner: _owner,
             repository: _repository,
@@ -139,6 +148,8 @@ impl GitRepository {
             open_issues: _open_issues,
             watchers: _watchers,
             subscribers_count: _subscribers_count,
+            created_at: PgTimestamp(repository_created_at.timestamp_millis()),
+            updated_at: PgTimestamp(repository_updated_at.timestamp_millis()),
         };
 
         let response = diesel::insert_into(git_repository::table)
