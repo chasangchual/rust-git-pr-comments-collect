@@ -16,7 +16,7 @@ pub struct GitRepository {
     pub pid: i32,
     pub owner: String,
     pub repository: String,
-    pub number: i32,
+    pub number: i64,
     pub full_name: String,
     pub private: bool,
     pub description: String,
@@ -39,7 +39,7 @@ pub struct GitRepository {
 pub struct NewGitRepository {
     pub owner: String,
     pub repository: String,
-    pub number: i32,
+    pub number: i64,
     pub full_name: String,
     pub private: bool,
     pub description: String,
@@ -109,19 +109,19 @@ impl GitRepository {
         results
     }
 
-    pub fn exists(connection: &PgPooledConnection, _repository_num: i32, _owner: String, _name: String) -> bool {
+    pub fn exists(connection: &PgPooledConnection, _repository_num: i64) -> bool {
         let results = git_repository
                             .filter(git_repository::number.eq(_repository_num))
-                            .filter(owner.eq(_owner))
-                            .filter(repository.eq(_name))
                             .load::<GitRepository>(connection)
                             .expect("Error loading git repository");
         results.len() >= 1
     }
     
-    pub fn create(connection: &PgPooledConnection, _repository_number: i32, _owner: String, _repository: String, _full_name: String, _private: bool,
-                                                   _description: String, _language: String, _url: String, _size: i32, _stargazers_count: i32, 
-                                                   _watchers_count: i32, _forks_count: i32, _open_issues_count: i32, _open_issues: i32, _watchers: i32,  _subscribers_count: i32)  -> Result<GitRepository, Error> {
+    pub fn create(connection: &PgPooledConnection, _repository_number: i64, _owner: String, _repository: String, 
+                                                   _full_name: String, _private: bool, _description: String, 
+                                                   _language: String, _url: String, _size: i32, _stargazers_count: i32, 
+                                                   _watchers_count: i32, _forks_count: i32, _open_issues_count: i32, 
+                                                   _open_issues: i32, _watchers: i32,  _subscribers_count: i32)  -> Result<GitRepository, Error> {
         let new_git_repository = NewGitRepository {
             owner: _owner,
             repository: _repository,

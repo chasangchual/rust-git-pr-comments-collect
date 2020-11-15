@@ -18,7 +18,7 @@ table! {
         pid -> Int4,
         owner -> Varchar,
         repository -> Varchar,
-        number -> Int4,
+        number -> Int8,
         full_name -> Varchar,
         private -> Bool,
         description -> Text,

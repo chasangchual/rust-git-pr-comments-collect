@@ -5,7 +5,7 @@ use reqwest::blocking::Response;
 use parse_link_header::parse;
 use serde_json::{from_str, Value, to_string_pretty};
 use diesel::*;
-use super::super::db::models::{PullRequest, NewPullRequest};
+use super::super::db::models::{GitRepository};
 use super::super::db::connection::*;
 use super::super::rest_client::base_client::*;
 use regex::Regex;
@@ -98,7 +98,7 @@ fn process_repository_detail(connection_pool: &PgPool, repository_url: &str) {
                 let mut private: bool = false;
                 let mut description: String = String::from("") ;
                 let mut url: String = String::from("") ;
-                let mut login: String = String::from("") ;
+                let mut owner: String = String::from("") ;
         
                 let mut size: i64 = -1;
                 let mut stargazers_count: i64 = -1;
@@ -119,7 +119,7 @@ fn process_repository_detail(connection_pool: &PgPool, repository_url: &str) {
                 }
                 match json_nodes.get("name") {
                     Some(v) => {
-                        full_name = String::from(v.as_str().unwrap());
+                        name = String::from(v.as_str().unwrap());
                     },
                     None => ()
                 }
@@ -154,7 +154,7 @@ fn process_repository_detail(connection_pool: &PgPool, repository_url: &str) {
                 }
                 match json_nodes.get("owner") {
                     Some(v) =>  {
-                        login = v.as_object().unwrap().get("login").unwrap().as_str().unwrap().to_string();
+                        owner = v.as_object().unwrap().get("login").unwrap().as_str().unwrap().to_string();
                     },
                     None => ()
                 }
@@ -227,8 +227,18 @@ fn process_repository_detail(connection_pool: &PgPool, repository_url: &str) {
                     None => ()
                 }
 
-                println!("{} {} {} {} {} {} {}", id, full_name, private, description, url, login, language);
-            }
+                println!("{} {} {} {} {} {} {}", id, full_name, private, description, url, owner, language);
+                match get_connection(&connection_pool) {
+                    Ok(connection) => {
+                        if ! GitRepository::exists(&connection, id) {
+                            GitRepository::create(&connection, id, owner, name, full_name, private, description,
+                            language, url, size as i32, stargazers_count as i32, watchers_count as i32, forks_count as i32,
+                        open_issues_count as i32, open_issues_count as i32, watchers_count as i32, subscribers_count as i32 );
+                        }        
+                    },
+                    Err(error) => println!("get_connection error {:?}", error),                
+                };    
+}
         },
         Err(error) => println!("{:?}", error), 
     };
