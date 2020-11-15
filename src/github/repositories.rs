@@ -11,7 +11,8 @@ use super::super::rest_client::base_client::*;
 use regex::Regex;
 
 pub fn collect_repositories(connection_pool: &PgPool) -> Result<(), Error> {
-    let start_endpoint = format!("https://api.github.com/repositories?page=1&per_page=100&since=22398");
+    let start_endpoint = format!("https://api.github.com/repositories?page=1&per_page=100&since={repository_id}", repository_id = get_latest_repository_id(connection_pool) + 1);
+
     let mut endpoint = start_endpoint;
 
     let base_client = BaseClient::new();
@@ -44,14 +45,21 @@ pub fn collect_repositories(connection_pool: &PgPool) -> Result<(), Error> {
     Ok(())
 }
 
-fn process_repositories(onnection_pool: &PgPool, json_str: &str) {
+fn get_latest_repository_id(connection_pool: &PgPool) -> i64 {
+    match get_connection(&connection_pool) {
+        Ok(connection) => GitRepository::recent_repository_num(&connection),
+        Err(_) => 0,
+    }
+}
+
+fn process_repositories(connection_pool: &PgPool, json_str: &str) {
     // println!("{}",json_str);
 
     let parsed: Value = from_str(&json_str).unwrap();    
     if parsed.is_array() {
         for obj in parsed.as_array().unwrap() {
             // println!("{}",to_string_pretty(obj).unwrap());
-            process_repository(onnection_pool, obj);
+            process_repository(connection_pool, obj);
         }
     }
 }

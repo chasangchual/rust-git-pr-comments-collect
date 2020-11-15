@@ -1,7 +1,7 @@
 use diesel::pg::data_types::PgTimestamp;
 use diesel::prelude::*;
 use diesel::result::Error;
-
+use diesel::dsl::{max};
 use super::connection::PgPooledConnection;
 use super::schema;
 use super::schema::git_repository;
@@ -11,6 +11,7 @@ use super::schema::pull_request::dsl::*;
 use super::schema::comments;
 use super::schema::comments::dsl::*;
 
+use diesel::sql_types::BigInt;
 use chrono::{DateTime, Duration, FixedOffset};
 
 #[derive(Queryable)]
@@ -121,6 +122,14 @@ impl GitRepository {
         results.len() >= 1
     }
     
+    pub fn recent_repository_num(connection: &PgPooledConnection) -> i64 {
+        let result: Option<i64> = git_repository
+                            .select(max(git_repository::number))
+                            .first(connection)
+                            .expect("Error loaing git repository");
+        result.unwrap()
+    }
+
     pub fn create(connection: &PgPooledConnection, _repository_number: i64, _owner: String, _repository: String, 
                                                    _full_name: String, _private: bool, _description: String, 
                                                    _language: String, _url: String, _size: i32, _stargazers_count: i32, 
