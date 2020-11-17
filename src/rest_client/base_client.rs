@@ -1,5 +1,5 @@
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, CONTENT_TYPE, USER_AGENT};
-use reqwest::Error;
+use reqwest::{Error, StatusCode};
 use reqwest::blocking::{Client, Response};
 use std::env;
 use url::{Url, ParseError};
@@ -50,6 +50,22 @@ impl BaseClient {
         .headers(headers)
         .send() {
             Ok(response) => Ok(response),
+            Err(error) => Err(error),
+        }
+    }    
+
+    pub fn get_retry_in_hit_limit(&self, endpoint: &str) -> Result<Response, Error> {
+        let http_result: Result<Response, Error> = self.get(endpoint);
+        
+        match http_result {
+            Ok(response) => {
+                match response.status() {
+                    StatusCode::Ok => Ok(response)
+                    StatusCode::Forbiden => {
+                        
+                    }
+                }
+            },
             Err(error) => Err(error),
         }
     }    
