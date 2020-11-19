@@ -3,6 +3,7 @@ use reqwest::{Error, StatusCode};
 use reqwest::blocking::{Client, Response};
 use std::env;
 use url::{Url, ParseError};
+use std::{thread, time};
 
 #[derive(Clone)]
 pub struct BaseClient {
@@ -54,16 +55,22 @@ impl BaseClient {
         }
     }    
 
-    pub fn get_retry_in_hit_limit(&self, endpoint: &str) -> Result<Response, Error> {
+    pub fn get_retry_in_hit_limit(&self, endpoint: &str, count: i32) -> Result<Response, Error> {
+        if count > 6 {
+            panic!("too deep")
+        }
+
         let http_result: Result<Response, Error> = self.get(endpoint);
         
         match http_result {
             Ok(response) => {
                 match response.status() {
-                    StatusCode::Ok => Ok(response)
-                    StatusCode::Forbiden => {
-                        
-                    }
+                    StatusCode::OK => Ok(response),
+                    StatusCode::FORBIDDEN => {
+                        thread::sleep(time::Duration::from_millis(10 * 60 * 1000));
+                        self.get_retry_in_hit_limit(endpoint, count + 1)
+                    },
+                    _ => Ok(response),
                 }
             },
             Err(error) => Err(error),

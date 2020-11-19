@@ -127,7 +127,10 @@ impl GitRepository {
                             .select(max(git_repository::number))
                             .first(connection)
                             .expect("Error loaing git repository");
-        result.unwrap()
+        match result {
+            Some(value) => value,
+            None => 1,
+        }
     }
 
     pub fn create(connection: &PgPooledConnection, _repository_number: i64, _owner: String, _repository: String, 
