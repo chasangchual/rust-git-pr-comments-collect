@@ -12,7 +12,7 @@ use super::schema::comments;
 use super::schema::comments::dsl::*;
 
 use diesel::sql_types::BigInt;
-use chrono::{DateTime, Duration, FixedOffset};
+use chrono::{DateTime, Duration, FixedOffset, Utc};
 
 #[derive(Queryable)]
 pub struct GitRepository {
@@ -140,8 +140,15 @@ impl GitRepository {
                                                    _open_issues: i32, _watchers: i32,  _subscribers_count: i32,
                                                    _created_at: String, _updated_at:String)  -> Result<GitRepository, Error> {
 
-        let repository_created_at: DateTime<FixedOffset> = DateTime::parse_from_rfc3339(_created_at.as_str()).unwrap();
-        let repository_updated_at: DateTime<FixedOffset> = DateTime::parse_from_rfc3339(_updated_at.as_str()).unwrap();
+        let repository_created_at: DateTime<Utc> = match DateTime::parse_from_rfc3339(_created_at.as_str()) {
+                Ok(date) => date.with_timezone(&Utc),
+                Err(_) => Utc::now(),
+        };
+        
+        let repository_updated_at: DateTime<Utc> = match DateTime::parse_from_rfc3339(_updated_at.as_str()){
+            Ok(date) => date.with_timezone(&Utc),
+            Err(_) => Utc::now(),
+        };
         
         let new_git_repository = NewGitRepository {
             owner: _owner,
