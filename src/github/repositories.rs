@@ -22,7 +22,7 @@ pub fn collect_repositories(connection_pool: &PgPool) -> Result<(), Error> {
     println!("get repositories- {}", endpoint);
 
     while has_next {
-        let res = base_client.get(&endpoint);
+        let res = base_client.get_retry_in_hit_limit(&endpoint, 1);
         let next_link = match res {
             Ok(response) => {
                 let next_link = get_next_link(&response);
@@ -91,7 +91,7 @@ fn process_repository(onnection_pool: &PgPool, json_obj: &Value) {
 
 fn process_repository_detail(connection_pool: &PgPool, repository_url: &str) {
     let base_client = BaseClient::new();
-    let res = base_client.get(repository_url);
+    let res = base_client.get_retry_in_hit_limit(repository_url, 1);
 
     match res {
         Ok(response) => {

@@ -56,6 +56,8 @@ impl BaseClient {
     }    
 
     pub fn get_retry_in_hit_limit(&self, endpoint: &str, count: i32) -> Result<Response, Error> {
+        println!("count: {}", count);
+
         if count > 6 {
             panic!("too deep")
         }
@@ -67,7 +69,9 @@ impl BaseClient {
                 match response.status() {
                     StatusCode::OK => Ok(response),
                     StatusCode::FORBIDDEN => {
+                        println!("get FORBIDDEN, will sleep 10 mins - {:?}", response);
                         thread::sleep(time::Duration::from_millis(10 * 60 * 1000));
+                        println!("call endpoint: {} - {} th", endpoint, count + 1);
                         self.get_retry_in_hit_limit(endpoint, count + 1)
                     },
                     _ => Ok(response),
