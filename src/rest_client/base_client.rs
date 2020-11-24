@@ -22,6 +22,9 @@ pub struct BaseClient {
 // }
 
 impl BaseClient {
+    const MAX_CALL_DEPTH: i32 = 6;
+    const SLEEP_DURATION: u64 = 10;
+
     pub fn new() -> BaseClient {
         let token: String = env::var("GITHUB_API_TOKEN").expect("GITHUB_API_TOKEN must set");
         let mut headers = HeaderMap::new();
@@ -61,10 +64,8 @@ impl BaseClient {
     }    
 
     pub fn get_retry_in_hit_limit(&self, endpoint: &str, count: i32) -> Result<Response, Error> {
-        println!("count: {}", count);
-
-        if count > 6 {
-            panic!("it is 6th calling. stop get_retry_in_hit_limit")
+        if count > BaseClient::MAX_CALL_DEPTH {
+            panic!("it is {} th calling. stop get_retry_in_hit_limit", BaseClient::MAX_CALL_DEPTH)
         }
 
         let http_result: Result<Response, Error> = self.get(endpoint);
@@ -79,7 +80,7 @@ impl BaseClient {
                             Ok(response)        
                         } else {
                             println!("it reached the max hourly request rate, will sleep 10 mins ");
-                            thread::sleep(time::Duration::from_millis(10 * 60 * 1000));
+                            thread::sleep(time::Duration::from_millis(BaseClient::SLEEP_DURATION * 60 * 1000));
                             println!("make the next call with endpoint: {} - {} th", endpoint, count + 1);
                             self.get_retry_in_hit_limit(endpoint, count + 1)
                         }
