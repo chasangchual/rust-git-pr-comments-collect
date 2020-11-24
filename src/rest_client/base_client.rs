@@ -4,6 +4,7 @@ use reqwest::blocking::{Client, Response};
 use std::env;
 use url::{Url, ParseError};
 use std::{thread, time};
+use serde_json::from_str;
 
 #[derive(Clone)]
 pub struct BaseClient {
@@ -15,6 +16,10 @@ pub struct BaseClient {
 // Rate limt
 // https://developer.github.com/apps/building-github-apps/understanding-rate-limits-for-github-apps/#:~:text=All%20OAuth%20applications%20authorized%20by,per%20hour%20for%20that%20user.
 // https://developer.github.com/v3/#rate-limiting
+// {
+//    "message": "API rate limit exceeded for xxx.xxx.xxx.xxx. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)",
+//    "documentation_url": "https://developer.github.com/v3/#rate-limiting"
+// }
 
 impl BaseClient {
     pub fn new() -> BaseClient {
@@ -69,10 +74,15 @@ impl BaseClient {
                 match response.status() {
                     StatusCode::OK => Ok(response),
                     StatusCode::FORBIDDEN => {
-                        println!("get FORBIDDEN, will sleep 10 mins - {:?}", response);
-                        thread::sleep(time::Duration::from_millis(10 * 60 * 1000));
-                        println!("call endpoint: {} - {} th", endpoint, count + 1);
-                        self.get_retry_in_hit_limit(endpoint, count + 1)
+                        let remaining: i32 = self.get_ratelimit_remaining(&response);
+                        if remaining > 0 {
+                            Ok(response)        
+                        } else {
+                            println!("get FORBIDDEN, will sleep 10 mins ");
+                            thread::sleep(time::Duration::from_millis(10 * 60 * 1000));
+                            println!("call endpoint: {} - {} th", endpoint, count + 1);
+                            self.get_retry_in_hit_limit(endpoint, count + 1)
+                            }
                     },
                     _ => Ok(response),
                 }
@@ -80,6 +90,14 @@ impl BaseClient {
             Err(error) => Err(error),
         }
     }    
+
+    pub fn get_ratelimit_remaining(&self, response: &Response) -> i32 {
+        // X-RateLimit-Remaining: 
+        response.headers().get("X-RateLimit-Remaining")
+        .and_then(|ct_len| ct_len.to_str().ok())
+        .and_then(|ct_len| ct_len.parse().ok())
+        .unwrap_or(5000)
+    } 
 
     pub fn get_as_json(&self, endpoint: &str) -> Result<serde_json::value::Value, Error> {
         let headers = self.headers.clone();
