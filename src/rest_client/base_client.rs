@@ -64,7 +64,7 @@ impl BaseClient {
         println!("count: {}", count);
 
         if count > 6 {
-            panic!("too deep")
+            panic!("it is 6th calling. stop get_retry_in_hit_limit")
         }
 
         let http_result: Result<Response, Error> = self.get(endpoint);
@@ -78,11 +78,11 @@ impl BaseClient {
                         if remaining > 0 {
                             Ok(response)        
                         } else {
-                            println!("get FORBIDDEN, will sleep 10 mins ");
+                            println!("it reached the max hourly request rate, will sleep 10 mins ");
                             thread::sleep(time::Duration::from_millis(10 * 60 * 1000));
-                            println!("call endpoint: {} - {} th", endpoint, count + 1);
+                            println!("make the next call with endpoint: {} - {} th", endpoint, count + 1);
                             self.get_retry_in_hit_limit(endpoint, count + 1)
-                            }
+                        }
                     },
                     _ => Ok(response),
                 }
