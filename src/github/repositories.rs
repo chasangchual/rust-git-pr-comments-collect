@@ -38,10 +38,14 @@ pub fn collect_repositories(connection_pool: &PgPool) -> Result<(), Error> {
         has_next = next_link.is_some();
         endpoint = match next_link {
             Some(link) => link,
-            None => String::from(""),
+            None => {
+                println!("something wrong - {:?} ", next_link);
+                String::from("")
+            },
         };
     }
 
+    println!("end of collect_repositories");
     Ok(())
 }
 
@@ -275,7 +279,7 @@ fn get_next_link(response: &Response) -> Option<String> {
     let headers = response.headers();
 
     if headers.get(LINK).is_some() {
-        // println!("headers.get(LINK).unwrap().to_str(): {:?}", headers.get(LINK).unwrap().to_str().unwrap());
+        println!("headers.get(LINK).unwrap().to_str(): {:?}", headers.get(LINK).unwrap().to_str().unwrap());
         // <https://api.github.com/repositories?page=1&per_page=100&since=369>; rel=\"next\", <https://api.github.com/repositories{?since}>; rel=\"first\""
 
         let link_header = headers.get(LINK).unwrap().to_str().unwrap();
@@ -295,6 +299,7 @@ fn get_next_link(response: &Response) -> Option<String> {
             Err(_) => None
         }
     } else {
+        println!("headers: {:?}", headers);
         None
     }
 }
