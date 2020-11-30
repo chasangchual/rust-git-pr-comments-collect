@@ -32,7 +32,10 @@ pub fn collect_repositories(connection_pool: &PgPool) -> Result<(), Error> {
                 process_repositories(connection_pool, &body);
                 next_link
             },
-            Err(_) => None,
+            Err(error) => {
+                println!("error in response: {:?}", error);
+                None
+            },
         };
 
         has_next = next_link.is_some();
@@ -40,7 +43,7 @@ pub fn collect_repositories(connection_pool: &PgPool) -> Result<(), Error> {
             Some(link) => link,
             None => {
                 println!("something wrong - {:?} ", next_link);
-                String::from("")
+                String::from(endpoint)
             },
         };
     }
